@@ -22,6 +22,7 @@ type Controller struct {
 
 // NewController create Controller object
 func NewController(iface string, snaplen int, filter string) *Controller {
+	log.Printf("iface: %s, snaplen: %d, filter: %s\n", iface, snaplen, filter)
 	return &Controller{
 		iface:         iface,
 		snaplen:       snaplen,
@@ -38,14 +39,17 @@ func (c *Controller) Init() error {
 		true,
 		pcap.BlockForever)
 	if err != nil {
+		log.Fatal("open live failed", err)
 		return err
 	}
 
 	if err := handle.SetBPFFilter(c.filter); err != nil {
+		log.Fatal("set bpf filter failed", err)
 		return err
 	}
 
 	c.handle = handle
+
 	return nil
 }
 
@@ -65,6 +69,7 @@ func (c *Controller) Run() {
 		case packet := <-packets:
 			// A nil packet indicates end of a pcap file.
 			if packet == nil {
+				log.Println("get a nil packet")
 				return
 			}
 

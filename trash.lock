@@ -1,0 +1,7 @@
+import:
+- package: github.com/google/gopacket
+  version: master
+  repo: https://github.com/google/gopacket.git
+- package: github.com/jroimartin/gocui
+  version: v0.4.0
+  repo: https://github.com/jroimartin/gocui.git
