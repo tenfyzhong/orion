@@ -3,16 +3,43 @@ package model
 import (
 	"bufio"
 	"io"
-	"log"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/tcpassembly"
 	"github.com/google/gopacket/tcpassembly/tcpreader"
 )
 
-// httpStreamFactory implements tcpassembly.StreamFactory
-type httpStreamFactory struct {
+// HTTPStreamFactory implements tcpassembly.StreamFactory
+type HTTPStreamFactory struct {
+	messages    []*Message
+	messageChan chan *Message
+}
+
+// NewHTTPStreamFactory create HTTPStreamFactory object
+func NewHTTPStreamFactory() *HTTPStreamFactory {
+	factory := &HTTPStreamFactory{
+		messages:    make([]*Message, 0, 100),
+		messageChan: make(chan *Message),
+	}
+	go factory.consumeMessage()
+	return factory
+}
+
+func (factory *HTTPStreamFactory) consumeMessage() {
+	for m := range factory.messageChan {
+		factory.messages = append(factory.messages, m)
+	}
+}
+
+func (factory *HTTPStreamFactory) putRequest(req *http.Request) {
+	num := atomic.AddUint32(&seq, 1)
+	m := &Message{
+		Num: num,
+		Req: req,
+	}
+	factory.messageChan <- m
 }
 
 // httpStream will handle the actual decoding of http requests.
@@ -20,13 +47,16 @@ type httpStream struct {
 	net       gopacket.Flow
 	transport gopacket.Flow
 	r         tcpreader.ReaderStream
+	factory   *HTTPStreamFactory
 }
 
-func (h *httpStreamFactory) New(net, transport gopacket.Flow) tcpassembly.Stream {
+// New create a stream object
+func (factory *HTTPStreamFactory) New(net, transport gopacket.Flow) tcpassembly.Stream {
 	hstream := &httpStream{
 		net:       net,
 		transport: transport,
 		r:         tcpreader.NewReaderStream(),
+		factory:   factory,
 	}
 	// Important... we must guarantee that data from the reader stream is read.
 	go hstream.run()
@@ -42,11 +72,10 @@ func (h *httpStream) run() {
 			// We must read until we see an EOF... very important!
 			return
 		} else if err != nil {
-			log.Println("Error reading stream", h.net, h.transport, ":", err)
+			continue
 		} else {
-			bodyBytes := tcpreader.DiscardBytesToEOF(req.Body)
-			req.Body.Close()
-			log.Println("Received request from stream", h.net, h.transport, ":", req, "with", bodyBytes, "bytes in request body")
+			tcpreader.DiscardBytesToEOF(req.Body)
+			h.factory.putRequest(req)
 		}
 	}
 }
