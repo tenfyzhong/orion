@@ -3,14 +3,16 @@ package model
 import (
 	"bufio"
 	"io"
-	"log"
 	"net/http"
 	"sync/atomic"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/tcpassembly"
 	"github.com/google/gopacket/tcpassembly/tcpreader"
+	logging "github.com/op/go-logging"
 )
+
+var log = logging.MustGetLogger("orion")
 
 const (
 	maxMessageLen = 100
@@ -85,7 +87,7 @@ func (h *httpStream) run() {
 		} else {
 			tcpreader.DiscardBytesToEOF(req.Body)
 			h.factory.putRequest(req)
-			log.Printf("Method: %s, URL: %s, Proto: %s, ContentLength: %d, Host: %s\n", req.Method, req.URL.String(), req.Proto, req.ContentLength, req.Host)
+			log.Debug("Method: %s, URL: %s, Proto: %s, ContentLength: %d, Host: %s\n", req.Method, req.URL.String(), req.Proto, req.ContentLength, req.Host)
 		}
 	}
 }

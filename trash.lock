@@ -5,3 +5,6 @@ import:
 - package: github.com/jroimartin/gocui
   version: v0.4.0
   repo: https://github.com/jroimartin/gocui.git
+- package: github.com/op/go-logging
+  version: 970db52
+  repo: https://github.com/op/go-logging.git

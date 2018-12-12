@@ -1,15 +1,17 @@
 package controller
 
 import (
-	"log"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/google/gopacket/tcpassembly"
+	logging "github.com/op/go-logging"
 	"github.com/tenfyzhong/orion/model"
 )
+
+var log = logging.MustGetLogger("orion")
 
 // Controller controller model
 type Controller struct {
@@ -22,7 +24,7 @@ type Controller struct {
 
 // NewController create Controller object
 func NewController(iface string, snaplen int, filter string) *Controller {
-	log.Printf("iface: %s, snaplen: %d, filter: %s\n", iface, snaplen, filter)
+	log.Info("iface: %s, snaplen: %d, filter: %s\n", iface, snaplen, filter)
 	return &Controller{
 		iface:         iface,
 		snaplen:       snaplen,
@@ -39,12 +41,12 @@ func (c *Controller) Init() error {
 		true,
 		pcap.BlockForever)
 	if err != nil {
-		log.Fatal("open live failed", err)
+		log.Critical("open live failed", err)
 		return err
 	}
 
 	if err := handle.SetBPFFilter(c.filter); err != nil {
-		log.Fatal("set bpf filter failed", err)
+		log.Critical("set bpf filter failed", err)
 		return err
 	}
 
@@ -58,7 +60,7 @@ func (c *Controller) Run() {
 	streamPool := tcpassembly.NewStreamPool(c.streamFactory)
 	assembler := tcpassembly.NewAssembler(streamPool)
 
-	log.Println("reading in packets")
+	log.Info("reading in packets")
 
 	// read in packets, pass to assembler.
 	packetSource := gopacket.NewPacketSource(c.handle, c.handle.LinkType())
@@ -69,14 +71,14 @@ func (c *Controller) Run() {
 		case packet := <-packets:
 			// A nil packet indicates end of a pcap file.
 			if packet == nil {
-				log.Println("get a nil packet")
+				log.Info("get a nil packet")
 				return
 			}
 
 			if packet.NetworkLayer() == nil ||
 				packet.TransportLayer() == nil ||
 				packet.TransportLayer().LayerType() != layers.LayerTypeTCP {
-				log.Println("Unusable packet")
+				log.Warning("Unusable packet")
 				continue
 			}
 

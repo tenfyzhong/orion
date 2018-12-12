@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"sync"
 
@@ -27,7 +26,7 @@ func main() {
 	ctl := controller.NewController(*iface, *snaplen, *filter)
 	err := ctl.Init()
 	if err != nil {
-		log.Fatalln("init failed, ", err)
+		log.Critical("init failed, ", err)
 		os.Exit(-1)
 	}
 	go ctl.Run()
