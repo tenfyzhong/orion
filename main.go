@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"os"
-	"sync"
 
+	"github.com/jroimartin/gocui"
 	"github.com/tenfyzhong/orion/controller"
+	"github.com/tenfyzhong/orion/view"
 )
 
 var iface = flag.String("i", "", "Interface to get packets from")
@@ -29,18 +30,18 @@ func main() {
 		log.Critical("init failed, ", err)
 		os.Exit(-1)
 	}
+
+	g, err := view.Run()
+	if err != nil {
+		return
+	}
+
+	ctl.AddUpdateFunc(view.NewUpdateFunc(g))
+
 	go ctl.Run()
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	wg.Wait()
-
-	// g, err := view.Run()
-	// if err != nil {
-	// 	return
-	// }
-
-	// if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-	// 	return
-	// }
+	// view.InitTitle(g)
+	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
+		return
+	}
 }

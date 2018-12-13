@@ -13,6 +13,9 @@ import (
 
 var log = logging.MustGetLogger("orion")
 
+// UpdateFunc update callback
+type UpdateFunc func(m *model.Message)
+
 // Controller controller model
 type Controller struct {
 	iface         string
@@ -20,16 +23,31 @@ type Controller struct {
 	filter        string
 	handle        *pcap.Handle
 	streamFactory *model.HTTPStreamFactory
+	updateFuncs   []UpdateFunc
+	messageChan   chan *model.Message
 }
 
 // NewController create Controller object
 func NewController(iface string, snaplen int, filter string) *Controller {
 	log.Info("iface: %s, snaplen: %d, filter: %s\n", iface, snaplen, filter)
-	return &Controller{
+	messageChan := make(chan *model.Message, 100)
+	c := &Controller{
 		iface:         iface,
 		snaplen:       snaplen,
 		filter:        filter,
-		streamFactory: model.NewHTTPStreamFactory(),
+		streamFactory: model.NewHTTPStreamFactory(messageChan),
+		updateFuncs:   make([]UpdateFunc, 0, 0),
+		messageChan:   messageChan,
+	}
+	go c.consumeMessage()
+	return c
+}
+
+func (c *Controller) consumeMessage() {
+	for m := range c.messageChan {
+		for _, f := range c.updateFuncs {
+			f(m)
+		}
 	}
 }
 
@@ -53,6 +71,11 @@ func (c *Controller) Init() error {
 	c.handle = handle
 
 	return nil
+}
+
+// AddUpdateFunc Add updateFunc
+func (c *Controller) AddUpdateFunc(u UpdateFunc) {
+	c.updateFuncs = append(c.updateFuncs, u)
 }
 
 // Run begin capture packet

@@ -20,15 +20,17 @@ const (
 
 // HTTPStreamFactory implements tcpassembly.StreamFactory
 type HTTPStreamFactory struct {
-	messages    []*Message
-	messageChan chan *Message
+	messages       []*Message
+	messageChan    chan *Message
+	ctlMessageChan chan *Message
 }
 
 // NewHTTPStreamFactory create HTTPStreamFactory object
-func NewHTTPStreamFactory() *HTTPStreamFactory {
+func NewHTTPStreamFactory(ctlMessageChan chan *Message) *HTTPStreamFactory {
 	factory := &HTTPStreamFactory{
-		messages:    make([]*Message, 0, maxMessageLen),
-		messageChan: make(chan *Message, maxMessageLen),
+		messages:       make([]*Message, 0, maxMessageLen),
+		messageChan:    make(chan *Message, maxMessageLen),
+		ctlMessageChan: ctlMessageChan,
 	}
 	go factory.consumeMessage()
 	return factory
@@ -36,10 +38,34 @@ func NewHTTPStreamFactory() *HTTPStreamFactory {
 
 func (factory *HTTPStreamFactory) consumeMessage() {
 	for m := range factory.messageChan {
-		factory.messages = append(factory.messages, m)
+		log.Debugf("get a new message: %p", m)
+		if len(factory.messages) == 0 ||
+			m.Num > factory.messages[len(factory.messages)-1].Num {
+			// A new message
+			factory.messages = append(factory.messages, m)
+			factory.ctlMessageChan <- m
+		} else {
+			// modify the old message
+			for _, message := range factory.messages {
+				if message.Num == m.Num {
+					modifyMessage(message, m)
+					break
+				}
+			}
+		}
 	}
 	if len(factory.messages) > maxMessageLen {
 		factory.messages = factory.messages[len(factory.messages)-maxMessageLen:]
+	}
+}
+
+// use the newMessage's field to overwrite the old one.
+func modifyMessage(oldMessage, newMessage *Message) {
+	if newMessage.Req != nil {
+		oldMessage.Req = newMessage.Req
+	}
+	if newMessage.Rsp != nil {
+		oldMessage.Rsp = newMessage.Rsp
 	}
 }
 
@@ -49,6 +75,7 @@ func (factory *HTTPStreamFactory) putRequest(req *http.Request) *Message {
 		Num: num,
 		Req: req,
 	}
+	log.Debugf("put a new message: %p", m)
 	factory.messageChan <- m
 	return m
 }
