@@ -44,4 +44,6 @@ func main() {
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		return
 	}
+
+	g.Close()
 }

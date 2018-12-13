@@ -20,6 +20,8 @@ func layout(g *gocui.Gui) error {
 		v.Autoscroll = true
 		v.Highlight = true
 		v.Overwrite = true
+		v.SelBgColor = gocui.ColorGreen
+		v.SelFgColor = gocui.ColorBlack
 
 		if _, err := setCurrentViewOnTop(g, sideViewName); err != nil {
 			log.Error(err)
