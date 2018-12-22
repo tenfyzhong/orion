@@ -7,28 +7,28 @@ import (
 	"github.com/tenfyzhong/orion/model"
 )
 
-// MessageController controller the message to draw
-type MessageController struct {
+// Controller controller the message to draw
+type Controller struct {
 	g        *gocui.Gui
 	mq       *MessageQueue
 	capacity int
 }
 
-// NewMessageController new MessageController
-func NewMessageController(g *gocui.Gui, capture int) *MessageController {
-	return &MessageController{
+// NewController new Controller
+func NewController(g *gocui.Gui, capture int) *Controller {
+	return &Controller{
 		g:  g,
 		mq: NewMessageQueue(capture),
 	}
 }
 
 // Update update callback
-func (mc *MessageController) Update(m *model.Message) {
+func (ctrl *Controller) Update(m *model.Message) {
 	if m == nil {
 		return
 	}
 
-	find := mc.mq.SearchByNum(m.Num)
+	find := ctrl.mq.SearchByNum(m.Num)
 	if find != nil {
 		if m.Req != nil {
 			find.Req = m.Req
@@ -37,7 +37,7 @@ func (mc *MessageController) Update(m *model.Message) {
 			find.Rsp = m.Rsp
 		}
 	}
-	mc.g.Update(func(g *gocui.Gui) error {
+	ctrl.g.Update(func(g *gocui.Gui) error {
 		v, err := g.View(sideViewName)
 		if err != nil {
 			log.Error("get view failed", err)
@@ -45,6 +45,8 @@ func (mc *MessageController) Update(m *model.Message) {
 		}
 
 		if find == nil {
+			m.Req.ParseForm()
+			ctrl.mq.Push(m)
 			appendMessage(v, m)
 		} else {
 			updateMessage(v, find)

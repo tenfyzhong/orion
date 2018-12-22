@@ -6,26 +6,20 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-// Run 运行
-func Run() (*gocui.Gui, error) {
-	g, err := gocui.NewGui(gocui.OutputNormal)
+func (ctrl *Controller) Run() error {
+	ctrl.g.Highlight = true
+	ctrl.g.Cursor = false
+	ctrl.g.SelFgColor = gocui.ColorGreen
+
+	ctrl.g.SetManagerFunc(layout)
+	err := ctrl.bindKey()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	g.Highlight = true
-	g.Cursor = false
-	g.SelFgColor = gocui.ColorGreen
+	initTitle(ctrl.g)
 
-	g.SetManagerFunc(layout)
-	err = bindKey(g)
-	if err != nil {
-		return nil, err
-	}
-
-	initTitle(g)
-
-	return g, nil
+	return nil
 }
 
 // initTitle init sidebar title

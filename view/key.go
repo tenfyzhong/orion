@@ -2,11 +2,15 @@ package view
 
 import (
 	"errors"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/jroimartin/gocui"
 )
 
-func bindKey(g *gocui.Gui) error {
+func (ctrl *Controller) bindKey() error {
+	g := ctrl.g
+
 	if g == nil {
 		return errors.New("gui is nil")
 	}
@@ -23,19 +27,61 @@ func bindKey(g *gocui.Gui) error {
 		log.Critical(err)
 	}
 
+	if err := ctrl.bindMainViewKey(); err != nil {
+		return err
+	}
+
+	if err := ctrl.bindSideViewKey(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctrl *Controller) bindMainViewKey() error {
+	g := ctrl.g
 	if err := g.SetKeybinding(mainViewName, gocui.KeyArrowLeft, gocui.ModNone, setSideOnTop); err != nil {
 		return err
 	}
 
+	if err := g.SetKeybinding(mainViewName, gocui.KeyEsc, gocui.ModNone, mainEsc); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ctrl *Controller) bindSideViewKey() error {
+	g := ctrl.g
 	if err := g.SetKeybinding(sideViewName, gocui.KeyArrowRight, gocui.ModNone, setMainOnTop); err != nil {
 		return err
 	}
 
-	if err := g.SetKeybinding(sideViewName, 'k', gocui.ModNone, sidebarLineUp); err != nil {
+	if err := g.SetKeybinding(sideViewName, 'k', gocui.ModNone, sidebarMove(-1)); err != nil {
 		return err
 	}
 
-	if err := g.SetKeybinding(sideViewName, 'j', gocui.ModNone, sidebarLineDown); err != nil {
+	if err := g.SetKeybinding(sideViewName, 'j', gocui.ModNone, sidebarMove(1)); err != nil {
+		return err
+	}
+
+	maxY := 40
+	if err := g.SetKeybinding(sideViewName, gocui.KeyCtrlF, gocui.ModNone, sidebarMove(maxY)); err != nil {
+		return err
+	}
+
+	if err := g.SetKeybinding(sideViewName, gocui.KeyCtrlB, gocui.ModNone, sidebarMove(-maxY)); err != nil {
+		return err
+	}
+
+	if err := g.SetKeybinding(sideViewName, gocui.KeyCtrlU, gocui.ModNone, sidebarMove(-maxY/2)); err != nil {
+		return err
+	}
+
+	if err := g.SetKeybinding(sideViewName, gocui.KeyCtrlD, gocui.ModNone, sidebarMove(maxY/2)); err != nil {
+		return err
+	}
+
+	if err := g.SetKeybinding(sideViewName, gocui.KeyEnter, gocui.ModNone, ctrl.sidebarEnter); err != nil {
 		return err
 	}
 
@@ -84,19 +130,62 @@ func setSideOnTop(g *gocui.Gui, v *gocui.View) error {
 	return err
 }
 
-func sidebarLineUp(g *gocui.Gui, v *gocui.View) error {
+func sidebarMove(line int) func(g *gocui.Gui, v *gocui.View) error {
+	return func(g *gocui.Gui, v *gocui.View) error {
+		if g == nil || v == nil {
+			return errors.New("g or v is nil")
+		}
+		v.MoveCursor(0, line, false)
+		return nil
+	}
+}
+
+func (ctrl *Controller) sidebarEnter(g *gocui.Gui, v *gocui.View) error {
+	log.Info("type enter")
 	if g == nil || v == nil {
 		return errors.New("g or v is nil")
 	}
+	_, y := v.Cursor()
+	line, err := v.Line(y)
+	log.Debugf("cursor, y: %d, line: %s", y, line)
+	if err != nil {
+		log.Errorf("get line failed, y: %d, err: %v", y, err)
+		return nil
+	}
 
-	v.MoveCursor(0, -1, false)
+	num := sidebarStringGetMessageNum(line)
+	if num == 0 {
+		log.Errorf("message num: %d", num)
+		return nil
+	}
+
+	find := ctrl.mq.SearchByNum(num)
+	if find == nil || find.Req == nil {
+		log.Errorf("search by num, find nil")
+		return nil
+	}
+
+	body, err := ioutil.ReadAll(find.Req.Body)
+	if err != nil {
+		log.Errorf("read all failed, err: %+v", err)
+		return nil
+	}
+
+	log.Debugf("read body: %+v", string(body))
+	mainView, err := g.View(mainViewName)
+	if err != nil {
+		log.Errorf("find main view failed, err: %v", err)
+		return nil
+	}
+
+	mainView.Clear()
+	fmt.Fprintln(mainView, find.Req.Host)
+	fmt.Fprintf(mainView, "%+v\n", find.Req.Header)
+
+	fmt.Fprintln(mainView, string(body))
 	return nil
 }
 
-func sidebarLineDown(g *gocui.Gui, v *gocui.View) error {
-	if g == nil || v == nil {
-		return errors.New("g or v is nil")
-	}
-	v.MoveCursor(0, 1, false)
+func mainEsc(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }

@@ -31,13 +31,25 @@ func main() {
 		os.Exit(-1)
 	}
 
-	g, err := view.Run()
+	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
-		return
+		log.Critical("new gui, ", err)
+		os.Exit(-2)
 	}
 
-	mc := view.NewMessageController(g, 1024)
-	ctl.AddUpdateFunc(mc.Update)
+	viewController := view.NewController(g, 1024)
+	err = viewController.Run()
+	if err != nil {
+		log.Critical("run view, ", err)
+		os.Exit(-3)
+	}
+
+	// g, err := view.Run()
+	// if err != nil {
+	// 	return
+	// }
+
+	ctl.AddUpdateFunc(viewController.Update)
 
 	go ctl.Run()
 
