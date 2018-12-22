@@ -3,7 +3,6 @@ package view
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/jroimartin/gocui"
 )
@@ -165,13 +164,6 @@ func (ctrl *Controller) sidebarEnter(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
-	body, err := ioutil.ReadAll(find.Req.Body)
-	if err != nil {
-		log.Errorf("read all failed, err: %+v", err)
-		return nil
-	}
-
-	log.Debugf("read body: %+v", string(body))
 	mainView, err := g.View(mainViewName)
 	if err != nil {
 		log.Errorf("find main view failed, err: %v", err)
@@ -180,9 +172,9 @@ func (ctrl *Controller) sidebarEnter(g *gocui.Gui, v *gocui.View) error {
 
 	mainView.Clear()
 	fmt.Fprintln(mainView, find.Req.Host)
-	fmt.Fprintf(mainView, "%+v\n", find.Req.Header)
+	// fmt.Fprintf(mainView, "%+v\n", find.Req.Header)
 
-	fmt.Fprintln(mainView, string(body))
+	fmt.Fprintln(mainView, string(find.ReqBody))
 	return nil
 }
 
