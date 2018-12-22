@@ -17,7 +17,7 @@ func layout(g *gocui.Gui) error {
 		}
 		v.Wrap = false
 		v.Frame = true
-		v.Autoscroll = true
+		v.Autoscroll = false
 		v.Highlight = true
 		v.Overwrite = true
 		v.SelBgColor = gocui.ColorGreen

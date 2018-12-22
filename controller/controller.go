@@ -46,7 +46,7 @@ func NewController(iface string, snaplen int, filter string) *Controller {
 func (c *Controller) consumeMessage() {
 	for m := range c.messageChan {
 		for _, f := range c.updateFuncs {
-			f(m)
+			go f(m)
 		}
 	}
 }

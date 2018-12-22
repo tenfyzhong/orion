@@ -36,7 +36,8 @@ func main() {
 		return
 	}
 
-	ctl.AddUpdateFunc(view.NewUpdateFunc(g))
+	mc := view.NewMessageController(g, 1024)
+	ctl.AddUpdateFunc(mc.Update)
 
 	go ctl.Run()
 

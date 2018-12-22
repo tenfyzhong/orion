@@ -22,7 +22,7 @@ func messageSidebarString(m *model.Message) string {
 	return fmt.Sprintf("%3d %6s %s %s", m.Num, m.Req.Method, m.Req.Host, "OK")
 }
 
-func sidebarStringGetMessageNum(str string) int {
+func sidebarStringGetMessageNum(str string) uint32 {
 	runes := []rune(str)
 	if len(runes) == 0 {
 		return 0
@@ -36,9 +36,9 @@ func sidebarStringGetMessageNum(str string) int {
 	}
 
 	// parse num
-	result := 0
+	result := uint32(0)
 	for i < len(runes) && unicode.IsNumber(runes[i]) {
-		result = result*10 + int(runes[i]-'0')
+		result = result*10 + uint32(runes[i]-'0')
 		i++
 	}
 
