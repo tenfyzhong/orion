@@ -175,6 +175,10 @@ func (ctrl *Controller) sidebarEnter(g *gocui.Gui, v *gocui.View) error {
 	// fmt.Fprintf(mainView, "%+v\n", find.Req.Header)
 
 	fmt.Fprintln(mainView, string(find.ReqBody))
+	if find.Rsp != nil {
+		fmt.Fprintln(mainView, string(find.RspBody))
+	}
+
 	return nil
 }
 
