@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -20,5 +21,5 @@ func handler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Println(string(body))
-	w.Write([]byte("golang"))
+	w.Write([]byte("golang, " + time.Now().String()))
 }
