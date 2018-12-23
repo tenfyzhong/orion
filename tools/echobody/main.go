@@ -20,5 +20,5 @@ func handler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Println(string(body))
-	w.Write(body)
+	w.Write([]byte("golang"))
 }

@@ -10,4 +10,5 @@ type Message struct {
 	Req     *http.Request
 	Rsp     *http.Response
 	ReqBody []byte
+	RspBody []byte
 }
