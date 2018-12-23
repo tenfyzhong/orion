@@ -31,7 +31,7 @@ func getKey(net, transport gopacket.Flow) key {
 type HTTPStreamFactory struct {
 	ctlMessageChan chan *Message
 	streamMap      map[key]*httpStream
-	mutex          sync.RWMutex
+	mutex          sync.Mutex
 }
 
 // NewHTTPStreamFactory create HTTPStreamFactory object
@@ -59,25 +59,11 @@ func (factory *HTTPStreamFactory) New(net, transport gopacket.Flow) tcpassembly.
 }
 
 func (factory *HTTPStreamFactory) putMessage(m *Message) {
-	num := atomic.AddUint32(&seq, 1)
-	m.Num = num
-	factory.ctlMessageChan <- m
-}
-
-func (factory *HTTPStreamFactory) getStream(k key) *httpStream {
-	factory.mutex.RLock()
-	defer factory.mutex.RUnlock()
-	return factory.streamMap[k]
-}
-
-func (factory *HTTPStreamFactory) setStream(k key, h *httpStream) {
-	factory.mutex.Lock()
-	defer factory.mutex.Unlock()
-	if h != nil {
-		factory.streamMap[k] = h
-	} else {
-		delete(factory.streamMap, k)
+	if m.Num == 0 {
+		num := atomic.AddUint32(&seq, 1)
+		m.Num = num
 	}
+	factory.ctlMessageChan <- m
 }
 
 // httpStream will handle the actual decoding of http requests.
@@ -151,22 +137,28 @@ func (h *httpStream) processRequest(buf *bufio.Reader) error {
 	log.Debugf("Method: %s, URL: %s, Proto: %s, ContentLength: %d, Host: %s, bodylen: %d\n", req.Method, req.URL.String(), req.Proto, req.ContentLength, req.Host, len(body))
 
 	k := getKey(h.net, h.transport)
-	storeStream := h.factory.getStream(k)
+	var m *Message
+	h.factory.mutex.Lock()
+	storeStream := h.factory.streamMap[k]
 	if storeStream == nil {
-		m := &Message{
+		m = &Message{
 			Req:     req,
 			ReqBody: body,
 		}
 		h.message = m
-		h.factory.putMessage(m)
-		h.factory.setStream(k, h)
+		h.factory.streamMap[k] = h
 	} else {
-		m := storeStream.message
+		delete(h.factory.streamMap, k)
+	}
+	h.factory.mutex.Unlock()
+
+	if storeStream != nil {
+		m = storeStream.message
 		m.Req = req
 		m.ReqBody = body
-		h.factory.putMessage(m)
-		h.factory.setStream(k, nil)
 	}
+
+	h.factory.putMessage(m)
 
 	return nil
 }
@@ -182,19 +174,26 @@ func (h *httpStream) processResponse(buf *bufio.Reader) error {
 	rsp.Body.Close()
 
 	k := getKey(h.net, h.transport)
-	storeStream := h.factory.getStream(k)
+	var m *Message
+	h.factory.mutex.Lock()
+	storeStream := h.factory.streamMap[k]
 	if storeStream == nil {
-		m := &Message{
+		m = &Message{
 			Rsp:     rsp,
 			RspBody: body,
 		}
 		h.message = m
-		h.factory.setStream(k, h)
+		h.factory.streamMap[k] = h
 	} else {
-		m := storeStream.message
+		delete(h.factory.streamMap, k)
+	}
+	h.factory.mutex.Unlock()
+
+	if storeStream != nil {
+		m = storeStream.message
 		m.Rsp = rsp
 		m.RspBody = body
-		h.factory.setStream(k, nil)
+		h.factory.putMessage(m)
 	}
 
 	return nil
